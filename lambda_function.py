@@ -13,6 +13,10 @@ def lambda_handler(event, context):
     image_count = event[cnst.IMAGE_COUNT]
     lastEvaluatedKey = None
     sort_index_name = ""
+    scan_direction = True
+
+    if cnst.SORT_DIRECTION in event and event[cnst.SORT_DIRECTION] in cnst.DIRECTIONS.keys():
+        scan_direction = cnst.DIRECTIONS[event[cnst.SORT_DIRECTION]]
     
     if cnst.LAST_EVALUATED_KEY in event:
         lastEvaluatedKey = event[LAST_EVALUATED_KEY]
@@ -35,7 +39,8 @@ def lambda_handler(event, context):
                 Limit = image_count,
                 FilterExpression = filterExpression,
                 ProjectionExpression = cnst.RESPONSE_ATTRIBUTE_LIST,
-                ExpressionAttributeNames = cnst.EXPRESSION_ATTRIBUTE_NAMES
+                ExpressionAttributeNames = cnst.EXPRESSION_ATTRIBUTE_NAMES,
+                ScanIndexForward = scan_direction
             )
         else:
             response = table.query(
@@ -46,6 +51,7 @@ def lambda_handler(event, context):
                 FilterExpression = filterExpression,
                 ProjectionExpression = cnst.RESPONSE_ATTRIBUTE_LIST,
                 ExpressionAttributeNames = cnst.EXPRESSION_ATTRIBUTE_NAMES,
+                ScanIndexForward = scan_direction
             )
     elif not lastEvaluatedKey:
         response = table.scan(
