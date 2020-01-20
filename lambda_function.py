@@ -12,16 +12,42 @@ def lambda_handler(event, context):
     tags = event[cnst.TAGS].split(',')
     image_count = event[cnst.IMAGE_COUNT]
     lastEvaluatedKey = None
+    sort_index_name = ""
     
     if cnst.LAST_EVALUATED_KEY in event:
         lastEvaluatedKey = event[LAST_EVALUATED_KEY]
         
     if image_count > cnst.MAX_IMAGES:
         image_count = cnst.MAX_IMAGES
+    
+    if cnst.SORT in event:
+        sort_value = event[cnst.SORT]
+        if sort_value in cnst.SORT_OPTIONS.keys():
+            sort_index_name = cnst.SORT_OPTIONS[sort_value]
         
     filterExpression = reduce(operator.or_, (Attr(cnst.TAGS).contains(tag) for tag in tags))
 
-    if not lastEvaluatedKey:
+    if sort_index_name:
+        if not lastEvaluatedKey:
+            response = table.query(
+                IndexName = sort_index_name,
+                KeyConditionExpression=Key(cnst.SORT_ATTRIBUTES[sort_index_name]).eq(cnst.PRICE_INDEX_CONST),
+                Limit = image_count,
+                FilterExpression = filterExpression,
+                ProjectionExpression = cnst.RESPONSE_ATTRIBUTE_LIST,
+                ExpressionAttributeNames = cnst.EXPRESSION_ATTRIBUTE_NAMES
+            )
+        else:
+            response = table.query(
+                IndexName = sort_index_name,
+                KeyConditionExpression=Key(cnst.SORT_ATTRIBUTES[sort_index_name]).eq(cnst.PRICE_INDEX_CONST),
+                ExclusiveStartKey = lastEvaluatedKey,
+                Limit = image_count,
+                FilterExpression = filterExpression,
+                ProjectionExpression = cnst.RESPONSE_ATTRIBUTE_LIST,
+                ExpressionAttributeNames = cnst.EXPRESSION_ATTRIBUTE_NAMES,
+            )
+    elif not lastEvaluatedKey:
         response = table.scan(
             Limit = image_count,
             FilterExpression = filterExpression,
@@ -50,3 +76,4 @@ def build_response(scan_response):
         response[cnst.LAST_EVALUATED_KEY] = ""          
     response[cnst.ITEMS] = scan_response[cnst.ITEMS]
     return response
+
